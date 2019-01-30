@@ -2,91 +2,70 @@ setwd("E:/2017/Documents/R/hRmonise")
 load('MIDIStuff.RData')
 load('midiLabel1.R')
 
-ExtractTracks = function(dataIn,exClude=c(),n=16,opLegacy=F){
-  if(opLegacy){
-    output = list();
-    # data.frame('Time'=c(),'Track'=c(),'Note'=c(),'Length'=c(),'Velocity'=c());
-    j = 1;
-    maxT = 0;
-    minP = 128;
-    maxP = 0;
-    for(i in 1:n){
-      if(!(i %in% exClude)){
-        tmp = dataIn[dataIn$track==i,];
-        if(nrow(tmp)!=0){
-          output$TMP = tmp[c('time','note','velocity','length')];
-          if(max(tmp$time + tmp$length)>maxT) maxT = max(tmp$time+tmp$length);
-          if(max(tmp$note)>maxP) maxP = max(tmp$note);
-          if(min(tmp$note)<minP) minP = min(tmp$note);
-          tmpNameList = names(output);
-          tmpNameList[tmpNameList == 'TMP'] = as.character(j);
-          names(output) = tmpNameList;
-          j = j+1;
+ExtractTracks = function(dataIn,exClude=c(),n=16){
+  # function to reformat and clean output from tuneR
+  
+  dataTMP = dataIn;
+  dataIn = dataIn$midi;
+  output = list();
+
+  maxT = 0;
+  minP = 128;
+  maxP = 0;
+  j = 0;
+  tmpInst = list('0'=0,'1'=0,'2'=0,'3'=0,'4'=0,'5'=0,'6'=0,'7'=0,
+                 '8'=0,'9'=0,'10'=0,'11'=0,'12'=0,'13'=0,'14'=0,'15'=0);
+  for(i in 0:n){
+    if(!(i %in% exClude)){
+      tmp = dataIn[dataIn$channel==i,];
+      if(nrow(tmp)!=0){
+        if(i==9){
+          thisName = '9';
         }
+        else{
+          thisName = j;
+          j = j + 1;
+          if(j==9) j = 10;
+        }
+        output$TMP = tmp[c('time','note','velocity','length')];
+        if(max(tmp$time + tmp$length)>maxT) maxT = max(tmp$time+tmp$length);
+        if(max(tmp$note)>maxP) maxP = max(tmp$note);
+        if(min(tmp$note)<minP) minP = min(tmp$note);
+        tmpNameList = names(output);
+        tmpNameList[tmpNameList == 'TMP'] = thisName;
+        names(output) = tmpNameList;
+        if(i==9){
+          tmpInst[[10]] = StatMode(dataTMP$meta$instruments[[10]])
+        }
+        else{
+          tmpInst[[j]] = StatMode(dataTMP$meta$instruments[[i+1]]);
+        }
+        
+        # j = j+1;
       }
     }
-    output$META = data.frame('maxT'=maxT,'minP'=minP,'maxP'=maxP);
   }
-  else{
-    dataTMP = dataIn;
-    dataIn = dataIn$midi;
-    output = list();
-    # data.frame('Time'=c(),'Track'=c(),'Note'=c(),'Length'=c(),'Velocity'=c());
-    # j = 1;
-    maxT = 0;
-    minP = 128;
-    maxP = 0;
-    j = 0;
-    tmpInst = list('0'=0,'1'=0,'2'=0,'3'=0,'4'=0,'5'=0,'6'=0,'7'=0,
-                   '8'=0,'9'=0,'10'=0,'11'=0,'12'=0,'13'=0,'14'=0,'15'=0);
-    for(i in 0:n){
-      if(!(i %in% exClude)){
-        tmp = dataIn[dataIn$channel==i,];
-        if(nrow(tmp)!=0){
-          if(i==9){
-            thisName = '9';
-          }
-          else{
-            thisName = j;
-            j = j + 1;
-            if(j==9) j = 10;
-          }
-          output$TMP = tmp[c('time','note','velocity','length')];
-          if(max(tmp$time + tmp$length)>maxT) maxT = max(tmp$time+tmp$length);
-          if(max(tmp$note)>maxP) maxP = max(tmp$note);
-          if(min(tmp$note)<minP) minP = min(tmp$note);
-          tmpNameList = names(output);
-          tmpNameList[tmpNameList == 'TMP'] = thisName;
-          names(output) = tmpNameList;
-          if(i==9){
-            tmpInst[[10]] = StatMode(dataTMP$meta$instruments[[10]])
-          }
-          else{
-            tmpInst[[j]] = StatMode(dataTMP$meta$instruments[[i+1]]);
-          }
-          
-          # j = j+1;
-        }
-      }
-    }
-    # tmpInst = lapply(dataTMP$meta$instruments,StatMode);
-    # names(tmpInst) = as.character(0:15);
-    # tmpInst = lapply(tmpInst,function(x){if(is.na(x)) x = 0 else x});
-    
-    output$META = list('maxT'=maxT,'minP'=minP,'maxP'=maxP,
-                       'tick'=dataTMP$meta$tick,
-                       'tsig'=c(dataTMP$meta$tsig,dataTMP$meta$ppq,dataTMP$meta$epq),
-                       'ksig'=dataTMP$meta$ksig,
-                       'bpm'=dataTMP$meta$bpm,
-                       'inst'=tmpInst,
-                       'resolution'=NA,
-                       'matmode'=NA,
-                       'sustainmode'=NA);
-  }
+  
+  output$META = list('maxT'=maxT,'minP'=minP,'maxP'=maxP,
+                     'tick'=dataTMP$meta$tick,
+                     'tsig'=c(dataTMP$meta$tsig,dataTMP$meta$ppq,dataTMP$meta$epq),
+                     'ksig'=dataTMP$meta$ksig,
+                     'bpm'=dataTMP$meta$bpm,
+                     'inst'=tmpInst,
+                     'resolution'=NA,
+                     'matmode'=NA,
+                     'sustainmode'=NA);
   return(output);
 }
 
-PlotTracks = function(dataIn,n=NULL,xlimIn = NULL,ylimIn=NULL,opMode=1,colOff=1,lineWid = 3,opPiano = T,opBars = T){
+PlotTracks = function(dataIn,n=NULL,xlimIn = NULL,ylimIn=NULL,opMode=T,colOff=1,lineWid = 3,opPiano = T,opBars = T){
+  # function to plot MIDI tracks, in format output by ExtractTracks(). Can be slow
+  # opMode plots notes as lines with duration rather than single points at start times
+  # colOff sets starting index for colour cycle
+  # lineWid sets note line width when opMode is T
+  # opPiano draws piano on side
+  # opBars draws bar divisions
+  
   if(is.null(xlimIn)){
     theLimx = c(0,dataIn$META$maxT);
   }
@@ -140,6 +119,8 @@ PlotTracks = function(dataIn,n=NULL,xlimIn = NULL,ylimIn=NULL,opMode=1,colOff=1,
 }
 
 DrawPiano = function(a=0,b=131,drawStart=0){
+  # function to draw piano on plot
+  
   theNotes = c(0,1,0,1,0,0,1,0,1,0,1,0);
   for(i in a:b){
     tmpI = theNotes[(i%%12)+1];
@@ -153,6 +134,8 @@ DrawPiano = function(a=0,b=131,drawStart=0){
 }
 
 NoteDistribution = function(songIn,music=T,drums=T,modulo=T){
+  # function to determine distribution of note pitches in MIDI tracks. modulo 
+  
   outPut1 = list();
   outPut2 = list();
   tmpLength = length(songIn)-1;
@@ -180,8 +163,6 @@ NoteDistribution = function(songIn,music=T,drums=T,modulo=T){
       outNotes4 = outNotes4 + outNotes2;
       outNotes1 = outNotes1/nrow(thisTrack);
       outNotes2 = outNotes2/sum(thisTrack$length);
-      # outNotes1 = outNotes1/max(outNotes1);
-      # outNotes2 = outNotes2/max(outNotes2);
       outPut1[[i]] = outNotes1;
       outPut2[[i]] = outNotes2;
     }
@@ -227,93 +208,6 @@ TrackToMatrix = function(trackIn,nB,dSmp = 1,trackMeta,sustainMode=0,maxVel=127)
   }
   
   rownames(out) = (0:(nrow(out)-1))/dSmp;
-  return(out);
-}
-
-TrackConvolve = function(songIn,printT = T){
-  tmpLen = length(songIn)-1;
-  tmpDist = NoteDistribution(songIn);
-  listCon = list();
-  
-  for(i in 1:tmpLen){
-    toCon = (1:132)*(tmpDist$length[,i]>0);
-    toCon = toCon[toCon!=0];
-    thisTrack = TrackToMatrix(songIn,i);
-    tmpCon = vector('numeric',nrow(thisTrack));
-    for(j in 1:length(toCon)){
-      tmpCon = tmpCon + convolve(thisTrack[,toCon[j]],thisTrack[,toCon[j]],type = 'circular');
-    }
-    listCon[[i]] = tmpCon/max(tmpCon);
-    if(printT) cat(sprintf("%s \t %i \n",as.character(Sys.time()),i));
-  }
-  
-  return(listCon)
-}
-
-ConvEnvelope = function(convIn,binSz = 2500){
-  tmpLen = length(convIn);
-  out = list();
-  
-  for(i in 1:tmpLen){
-    thisTrack = convIn[[i]];
-    trkLen = length(thisTrack);
-    trkBin = trkLen/binSz;
-    binBrk = round(seq(0,trkLen,length.out = trkBin)+1);
-    trkMax = c();
-    trkPts = c();
-    for(j in 1:(length(binBrk)-1)){
-      tmpRange = thisTrack[binBrk[j]:(binBrk[j+1]-1)]
-      trkMax[j] = max(tmpRange);
-      tmpPt = (1:binSz)[tmpRange==max(tmpRange)] + binBrk[j]-1;
-      trkPts[j] = tmpPt[1];
-    }
-    #currentMax = thisTrack[1];
-    #currentPos = 1
-    #for(j in 1:trkLen){
-    #tmpRange = thisTrack[max(c(j-round(binSz/2),1)):min(c(j+round(binSz/2),trkLen))];
-    #tmpMax = max(tmpRange);
-    #if(currentMax!=tmpMax){
-    #trkMax = c(trkMax,currentMax);
-    #trkPts = c(trkPts,currentPos);
-    #currentMax = tmpMax;
-    #currentPos = j + round(binSz/2);
-    #}
-    #}
-    #trkMax = c(trkMax,currentMax);
-    #trkPts = c(trkPts,currentPos);
-    trkPts[j+1] = trkLen;
-    trkMax[j+1] = thisTrack[trkLen];
-    out[[i]] = approx(trkPts,trkMax,1:trkLen);
-  }
-  
-  return(out);
-}
-
-MaxEnvelope = function(envIn){
-  tmpLen = length(envIn);
-  trkLen = length(envIn[[1]]$y);
-  tmp = vector('numeric',trkLen);
-  
-  tmp[1] = NA;
-  tmp[trkLen] = NA;
-  
-  for(i in 2:(trkLen-1)){
-    tmpMax = envIn[[1]]$y[i];
-    trkSelect = 1;
-    for(j in 2:tmpLen){
-      if(envIn[[j]]$y[i]>tmpMax){
-        tmpMax = envIn[[j]]$y[i];
-        trkSelect = j;
-      }
-    }
-    tmp[i] = trkSelect;
-  }
-  
-  out = vector('numeric',tmpLen);
-  for(i in 1:tmpLen){
-    out[i] = sum(tmp[2:(trkLen-1)]==i)/(trkLen-2);
-  }
-  
   return(out);
 }
 
@@ -405,7 +299,7 @@ StringToHex = function(str){
 }
 
 IntToHex = function(n,pad=0){
-  # function to convert an integer to hex
+  # function to convert an integer to hex. pad is length of 0-padding at start
   
   nByte = floor(log(n,256));
   out = c();
@@ -442,7 +336,7 @@ IntToVL = function(n,byteLim = 4){
   }
   out = c(out,as.raw(n));
   
-  if(length(out)>byteLim) stop('Input outside representable range (change byte limit)');
+  if(length(out)>byteLim) stop('Input outside representable range (increase byte limit)');
   return(out);
 }
 
@@ -451,7 +345,6 @@ ReadMidi = function(fileIn,debugBytes = F){
   # metadata stored in META
   
   con = file(description = fileIn, open = "rb");
-  # on.exit(close(con));
   
   MThd = readChar(con, 4);
   if (MThd != "MThd") 
@@ -500,7 +393,7 @@ ReadMidi = function(fileIn,debugBytes = F){
           cat(paste('Last event:',theEv,'\n'));
           Sys.sleep(0.1);
         }
-        else if((track==8)&&(j>=862)){
+        else if((track==8)&&(j>=100)){
           j = NA;
           thePos = paste(as.character(IntToHex(0xa544+bytes)),collapse = ' ');
           cat(paste('Bytes read:',bytes,'\nCurrent position:',thePos,'\n'));
@@ -512,17 +405,10 @@ ReadMidi = function(fileIn,debugBytes = F){
           cat(paste('Last event:',theEv,'\n'));
           Sys.sleep(0.1);
         }
-        #####################################
-        
-        # if((bytes>117)&&(bytes<130)){ # debugging loop
-        #   print('pause');
-        # }
-        # if((bytes>117)&&(bytes<130)){ # debugging loop
-        #   print('pause');
-        # }
         if((track==8)&&(bytes>=(MTrk_length-6))){
           Sys.sleep(0.1);
         }
+        #####################################
       }
     }
     
@@ -548,7 +434,7 @@ ReadMidi = function(fileIn,debugBytes = F){
                                                        "Cue Point", "Program Name", "Device Name", "MIDI Channel Prefix", 
                                                        "MIDI Port", "End of Track", "Set Tempo", "SMPTE Offset", 
                                                        "Time Signature", "Key Signature", "Sequencer Specific"));
-  #return(allTracks);
+  
   x = allTracks;
   
   tmpTime = strsplit(x[x$event=='Time Signature',"parameterMetaSystem"],', ')[[1]];
@@ -595,35 +481,7 @@ ReadMidi = function(fileIn,debugBytes = F){
                       velocity = integer(0)));
   }
   x = split(x, x$parameter1);
-  # for(O in 1:length(x)){
-  # i = x[[O]];
-  # i = i[order(i$channel,i$time),];
-  # j = 1;
-  # itemp = data.frame(time=c(),event=c(),channel=c(),parameter1=c(),parameter2=c(),track=c(),stringsAsFactors = F);
-  # k = 0;
-  # t1 = c();
-  # t2 = c();
-  # while(j+k <= nrow(i)){
-  #   if(j%%2) {
-  #     while(((j+k)<=nrow(i))&&(i[j+k,]$event != "Note On")){
-  #       k = k+1;
-  #     }
-  #     if((j+k)<=nrow(i)) t1 = c(t1,i[j+k,]$time);
-  #   }
-  #   else{
-  #     while(((j+k)<=nrow(i))&&(i[j+k,]$event != "Note Off")){
-  #       k = k+1;
-  #     }
-  #     if((j+k)<=nrow(i)) t2 = c(t2,i[j+k,]$time);
-  #   }
-  #   j = j+1;
-  #   itemp = rbind(itemp,i[j+k,]);
-  # }
-  # # i = i[(i$time%in%t1)&(i$event=='Note On'),];
-  # i = itemp;
-  # i$length = t2-t1;
-  # i;
-  # }
+
   x = lapply(x, function(i) {
     i = i[order(i$channel,i$time),];
     j = 1;
@@ -649,15 +507,11 @@ ReadMidi = function(fileIn,debugBytes = F){
       }
       j = j+1;
     }
-    # i = i[(i$time%in%t1)&(i$event=='Note On'),];
     i = itemp;
     i$length = t2-t1;
     i;
-    #Time = matrix(i$time, byrow = TRUE, ncol = 2)
-    #i = i[i$event == "Note On", ]
-    #i$length = Time[, 2] - Time[, 1]
-    #i
   });
+  
   x = do.call("rbind", x);
   x$parameter1 = as.integer(x$parameter1);
   x$notename = factor(tuneR:::notenames(x$parameter1 - 69), levels = tuneR:::notenames(-69:62));
@@ -665,7 +519,7 @@ ReadMidi = function(fileIn,debugBytes = F){
   names(x) = c("time", "channel", "note", "velocity", "track", "length", "notename");
   rownames(x) = NULL;
   x = x[, c("time", "length", "track", "channel", "note", "notename", "velocity")];
-  # return(x);
+
   x = list('midi'=x,'meta'=list('tick'=MThd_division,'bpm'=60000000/as.numeric(tmpTempo),'tsig'=tmpTSig,'ppq'=tmpClocks,'epq'=tmp8pQ,'ksig'=tmpKSig,'instruments'=instList));
   return(ExtractTracks(x));
   
@@ -899,8 +753,6 @@ ReadMTrkEvent = function(con, lastEventChannel = NA){
       parameter1 = parameter1,
       parameter2 = parameter2,
       parameterMetaSystem = NA,
-      # modified next line as source code caused issues with some MIDI files
-      # ORIGINAL bytes = 2 + DTtemp[2] + (!(event %in% c("c", "d")) - backseeked),
       bytes = 2 + DTtemp[2] - backseeked + !(event %in% c("c", "d")),
       EventChannel = EventChannel
     )
@@ -1011,6 +863,7 @@ NoteToNum = function(x,vectOut=T){
 }
 
 NumToNote = function(x,modVec=T){
+  # function to return note names from number
   if(modVec){
     x = x==1;
   }
@@ -1113,6 +966,8 @@ TrackSelector = function(tracksIn,n=NULL,d=F,hasMeta=T){
 }
 
 PitchShift = function(tracksIn,x=0,n=NULL,d=F){
+  # function to shift pitch of tracks in MIDI. Note we do not generally wish to shift drum track, so d=F as default
+  
   n = TrackSelector(tracksIn,n,d);
   
   data1 = tracksIn[n];
@@ -1131,7 +986,7 @@ PitchShift = function(tracksIn,x=0,n=NULL,d=F){
 }
 
 TimeShift = function(tracksIn,x=0,n=NULL,d=T){
-  # function to shift track notes in time. Use in conjunction with TickToBar() for easier use. Note d = FALSE will not move drum tracks, and that would be
+  # function to shift track notes in time. Use in conjunction with BarToTick() for easier use. Note d = FALSE will not move drum tracks, and that would be
   # big bad, so d=T is default here!
   
   n = TrackSelector(tracksIn,n,d);
@@ -1155,6 +1010,7 @@ SongToMatrix = function(tracksIn,n=4,doTrip=T,bulkOut=T,sustainMode=0){
   # sustainMode = 0   note length implied by consecutive notes of same pitch and velocity
   # sustainMode = 1   note length represented by negative velocity value
   # sustainMode = 2   note length represented in upper register
+  
   tracksIn = RoundSongTimes(tracksIn,n,T,doTrip);
   dSmp = length(NoteValBins(n,doTrip))-1;
   nB = TickToBar(tracksIn$META$maxT,tracksIn);
@@ -1223,7 +1079,8 @@ BeatImportance = function(n=3,x=NA,i=1,opScale=0.4150375,opTrip=T,opYOff=0){
 }
 
 ModuloSongNotes = function(tracksIn,off=60,reArr=0,n=NULL,d=F){
-  # function to convert track notes to integer pitch classes, useful for binning data.
+  # function to convert track notes to integer pitch classes, useful for binning data. off allows pitches to be raised from integer pitch class 0:11. reArr
+  # specifies which integer pitch class should begin the octave
   
   n = TrackSelector(tracksIn,n,d);
   
@@ -1251,9 +1108,6 @@ NegativeHarmony = function(tracksIn,tRoot=0,n=NULL,d=F,opMed=F){
   
   data1 = lapply(data1,function(a,b=tOrigin){
     tmpNote = a$note;
-    # for(i in 0:10){
-    #   a$note[((tmpNote>=(i*12))&(tmpNote<(i*12+12)))] = (tOrigin+i*12) - tmpNote[((tmpNote>=(i*12))&(tmpNote<(i*12+12)))] + (tOrigin+i*12) + 12;
-    # }
     
     b = b+60;
     a$note = b - a$note + b;
@@ -1277,6 +1131,8 @@ NegativeHarmony = function(tracksIn,tRoot=0,n=NULL,d=F,opMed=F){
 }
 
 AddMeta = function(tracksIn=NULL,maxT=0,minP=0,maxP=127,tick=384,tsig=c(4,4,24,8),ksig=c(0,0),bpm=120,tmpInst=list('0'=0,'1'=0,'2'=0,'3'=0,'4'=0,'5'=0,'6'=0,'7'=0,'8'=0,'9'=0,'10'=0,'11'=0,'12'=0,'13'=0,'14'=0,'15'=0)){
+  # function to add user-specified track metadata to a song that lacks it, for instance if the MIDI was created using AddNotes().
+  
   if(is.null(tracksIn)) tracksIn = list();
   
   tracksIn$META = list('maxT'=maxT,'minP'=minP,'maxP'=maxP,
@@ -1293,6 +1149,8 @@ AddMeta = function(tracksIn=NULL,maxT=0,minP=0,maxP=127,tick=384,tsig=c(4,4,24,8
 }
 
 AddNotes = function(chanIn=0,notesIn=NULL,timesIn=NULL,lengthsIn=NULL,velIn=NULL,tracksIn=NULL){
+  # function to add notes to a given track (chanIn). Can be used to build a MIDI from scratch from within R
+  
   if(is.null(tracksIn)) tracksIn = AddMeta();
   
   if(typeof(notesIn)=='character') notesIn = NoteToNum(notesIn,F);
@@ -1347,6 +1205,9 @@ LengthDistribution = function(tracksIn){
 }
 
 MeanPolyphony = function(tracksIn,norm01 = T){
+  # function to calculate average number of notes voiced simultaneously for each track. norm01 normalises output 0:1 so track with lowest number of simultaneous
+  # notes is 0
+  
   trkMat = SongToMatrix(tracksIn,bulkOut = F);
   tmpLen = length(tracksIn)-1;
   
@@ -1369,6 +1230,9 @@ MeanPolyphony = function(tracksIn,norm01 = T){
 }
 
 NotesPerBar = function(tracksIn,norm01 = T){
+  # function to determine average number of notes played per bar for each track. norm01 normalises output 0:1 so track with lowest number of simultaneous
+  # notes is 0
+  
   trkMat = SongToMatrix(tracksIn,bulkOut = F);
   tmpLen = length(tracksIn)-1;
   tickPerBar = 2^trkMat$META$resolution[1];
@@ -1606,8 +1470,8 @@ InstrumentList = function(n,outCol = 1:4){
 GroupTrackInstruments = function(tracksIn,defaultInst = c(0,8,16,24,32,40,48,56,64,0,72,80,88,96,104,112),nameOut = 2){
   # function to merge tracks that use instruments from the same instrument class, according to InstrumentList. Note that this function ignores (and removes)
   # tracks using instruments from the "Sound Effects" instrument group as in doing so, the number of tracks can be limited to 16 and so remains General MIDI
-  # compliant. If nameOut is 0, instrument class numbers are used as track names; if 1, then instrument names are used as track names; if 2, then instrument
-  # class names are used as track names
+  # compliant (as we reserve the 10th track for drums). If nameOut is 0, instrument class numbers are used as track names; if 1, then instrument names are
+  # used as track names; if 2, then instrument class names are used as track names
   
   if(!(nameOut %in% c(0,1,2))){
     stop('nameOut is wrong');

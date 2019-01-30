@@ -1,5 +1,6 @@
-setwd("E:/2017/Documents/R")
+setwd("E:/2017/Documents/R/hRmonise")
 load('MIDIStuff.RData')
+load('midiLabel1.R')
 
 ExtractTracks = function(dataIn,exClude=c(),n=16,opLegacy=F){
   if(opLegacy){
@@ -37,7 +38,7 @@ ExtractTracks = function(dataIn,exClude=c(),n=16,opLegacy=F){
     maxP = 0;
     j = 0;
     tmpInst = list('0'=0,'1'=0,'2'=0,'3'=0,'4'=0,'5'=0,'6'=0,'7'=0,
-                       '8'=0,'9'=0,'10'=0,'11'=0,'12'=0,'13'=0,'14'=0,'15'=0);
+                   '8'=0,'9'=0,'10'=0,'11'=0,'12'=0,'13'=0,'14'=0,'15'=0);
     for(i in 0:n){
       if(!(i %in% exClude)){
         tmp = dataIn[dataIn$channel==i,];
@@ -71,16 +72,16 @@ ExtractTracks = function(dataIn,exClude=c(),n=16,opLegacy=F){
     # tmpInst = lapply(dataTMP$meta$instruments,StatMode);
     # names(tmpInst) = as.character(0:15);
     # tmpInst = lapply(tmpInst,function(x){if(is.na(x)) x = 0 else x});
-
+    
     output$META = list('maxT'=maxT,'minP'=minP,'maxP'=maxP,
-                        'tick'=dataTMP$meta$tick,
-                        'tsig'=c(dataTMP$meta$tsig,dataTMP$meta$ppq,dataTMP$meta$epq),
-                        'ksig'=dataTMP$meta$ksig,
-                        'bpm'=dataTMP$meta$bpm,
-                        'inst'=tmpInst,
-                        'resolution'=NA,
-                        'matmode'=NA,
-                        'sustainmode'=NA);
+                       'tick'=dataTMP$meta$tick,
+                       'tsig'=c(dataTMP$meta$tsig,dataTMP$meta$ppq,dataTMP$meta$epq),
+                       'ksig'=dataTMP$meta$ksig,
+                       'bpm'=dataTMP$meta$bpm,
+                       'inst'=tmpInst,
+                       'resolution'=NA,
+                       'matmode'=NA,
+                       'sustainmode'=NA);
   }
   return(output);
 }
@@ -171,14 +172,16 @@ NoteDistribution = function(songIn,music=T,drums=T,modulo=T){
     if((!isDrum)*music + isDrum*drums){
       outNotes1 = vector(mode='numeric',length=modulo);
       outNotes2 = vector(mode='numeric',length=modulo);
-        for(j in 1:nrow(thisTrack)){
-          outNotes1[thisTrack[j,]$note%%modulo+1] = outNotes1[thisTrack[j,]$note%%modulo+1]+1
-          outNotes2[thisTrack[j,]$note%%modulo+1] = outNotes2[thisTrack[j,]$note%%modulo+1]+thisTrack[j,]$length;
-        }
+      for(j in 1:nrow(thisTrack)){
+        outNotes1[thisTrack[j,]$note%%modulo+1] = outNotes1[thisTrack[j,]$note%%modulo+1]+1
+        outNotes2[thisTrack[j,]$note%%modulo+1] = outNotes2[thisTrack[j,]$note%%modulo+1]+thisTrack[j,]$length;
+      }
       outNotes3 = outNotes3 + outNotes1;
       outNotes4 = outNotes4 + outNotes2;
-      outNotes1 = outNotes1/max(outNotes1);
-      outNotes2 = outNotes2/max(outNotes2);
+      outNotes1 = outNotes1/nrow(thisTrack);
+      outNotes2 = outNotes2/sum(thisTrack$length);
+      # outNotes1 = outNotes1/max(outNotes1);
+      # outNotes2 = outNotes2/max(outNotes2);
       outPut1[[i]] = outNotes1;
       outPut2[[i]] = outNotes2;
     }
@@ -190,8 +193,8 @@ NoteDistribution = function(songIn,music=T,drums=T,modulo=T){
   
   outPut1 = as.data.frame.list(outPut1,col.names= 1:tmpLength);
   outPut2 = as.data.frame.list(outPut2,col.names = 1:tmpLength);
-  outPut3 = data.frame('count'=outNotes3/max(outNotes3),'length'=outNotes4/max(outNotes4));
-  outPut = list('count'=outPut1,'length'=outPut2,'totals'=outPut3);
+  outPut3 = data.frame('count'=outNotes3,'length'=outNotes4);
+  outPut = list('count'=outPut1,'length'=outPut2,'N'=outPut3);
   return(outPut);
 }
 
@@ -267,14 +270,14 @@ ConvEnvelope = function(convIn,binSz = 2500){
     #currentMax = thisTrack[1];
     #currentPos = 1
     #for(j in 1:trkLen){
-      #tmpRange = thisTrack[max(c(j-round(binSz/2),1)):min(c(j+round(binSz/2),trkLen))];
-      #tmpMax = max(tmpRange);
-      #if(currentMax!=tmpMax){
-        #trkMax = c(trkMax,currentMax);
-        #trkPts = c(trkPts,currentPos);
-        #currentMax = tmpMax;
-        #currentPos = j + round(binSz/2);
-      #}
+    #tmpRange = thisTrack[max(c(j-round(binSz/2),1)):min(c(j+round(binSz/2),trkLen))];
+    #tmpMax = max(tmpRange);
+    #if(currentMax!=tmpMax){
+    #trkMax = c(trkMax,currentMax);
+    #trkPts = c(trkPts,currentPos);
+    #currentMax = tmpMax;
+    #currentPos = j + round(binSz/2);
+    #}
     #}
     #trkMax = c(trkMax,currentMax);
     #trkPts = c(trkPts,currentPos);
@@ -333,7 +336,7 @@ ExportMIDI = function(tracksIn,nameOut='hRmoniseOutput',optWrite = T,optPrint = 
       actualNTrk = actualNTrk + 1;
     }
   }
-
+  
   out = c(out,IntToHex(actualNTrk+1,2),IntToHex(tick,2));
   
   toAdd = c();
@@ -358,7 +361,7 @@ ExportMIDI = function(tracksIn,nameOut='hRmoniseOutput',optWrite = T,optPrint = 
     # }
     if(nrow(thisTrack)!=0){
       thisChannel = as.numeric(names(tracksIn[i]));
-      thisInst = instName[as.numeric(names(instName))==thisChannel][[1]];
+      thisInst = instName[as.numeric(names(instName))==thisChannel][[1]][1];  # maybe create check to see which instrument used most rather than choosing first?
       toAdd = c(as.raw(0x00),IntToHex(192+thisChannel),IntToHex(thisInst),
                 as.raw(0x00),IntToHex(176+thisChannel),IntToHex(7),IntToHex(127));  # channel volume
       tmpTrk = data.frame('Time'=c(),'On'=c(),'Track'=c(),'Note'=c(),'Velocity'=c());
@@ -438,17 +441,17 @@ IntToVL = function(n,byteLim = 4){
     }
   }
   out = c(out,as.raw(n));
-
+  
   if(length(out)>byteLim) stop('Input outside representable range (change byte limit)');
   return(out);
 }
 
-ReadMidi = function(fileIn){
+ReadMidi = function(fileIn,debugBytes = F){
   # function to read MIDI tracks from file. tuneR package dependency. Returns a list of tracks containing timing, note, velocity, notelength;
   # metadata stored in META
   
   con = file(description = fileIn, open = "rb");
-  on.exit(close(con));
+  # on.exit(close(con));
   
   MThd = readChar(con, 4);
   if (MThd != "MThd") 
@@ -474,19 +477,55 @@ ReadMidi = function(fileIn){
     MeventList = list();
     bytes = 0;
     i = 0;
+    if(debugBytes) j = 0;
+    
     while (bytes < MTrk_length) {
       i = i + 1;
       MeventList[[i]] = ReadMTrkEvent(con, if (i > 1) 
         MeventList[[i - 1]][["EventChannel"]]
         else NA);
       bytes = bytes + MeventList[[i]][["bytes"]];
-      # if((bytes>117)&&(bytes<130)){ # debugging loop
-      #   print('pause');
-      # }
-      # if((bytes>117)&&(bytes<130)){ # debugging loop
-      #   print('pause');
-      # }
+      
+      # DEBUGGING #########################
+      if(debugBytes){
+        j = j + MeventList[[i]][["bytes"]];
+        if(is.na(j)){
+          thePos = paste(as.character(IntToHex(0xa544+bytes)),collapse = ' ');
+          cat(paste('Bytes read:',bytes,'\nCurrent position:',thePos,'\n'));
+          theEv = c(IntToVL(MeventList[[i]]$deltatime),IntToHex(MeventList[[i]]$parameter1));
+          if(!is.na(MeventList[[i]]$parameter2)){
+            theEv = c(theEv,IntToHex(MeventList[[i]]$parameter2));
+          }
+          theEv = paste(as.character(theEv),collapse=' ');
+          cat(paste('Last event:',theEv,'\n'));
+          Sys.sleep(0.1);
+        }
+        else if((track==8)&&(j>=862)){
+          j = NA;
+          thePos = paste(as.character(IntToHex(0xa544+bytes)),collapse = ' ');
+          cat(paste('Bytes read:',bytes,'\nCurrent position:',thePos,'\n'));
+          theEv = c(IntToVL(MeventList[[i]]$deltatime),IntToHex(MeventList[[i]]$parameter1));
+          if(!is.na(MeventList[[i]]$parameter2)){
+            theEv = c(theEv,IntToHex(MeventList[[i]]$parameter2));
+          }
+          theEv = paste(as.character(theEv),collapse=' ');
+          cat(paste('Last event:',theEv,'\n'));
+          Sys.sleep(0.1);
+        }
+        #####################################
+        
+        # if((bytes>117)&&(bytes<130)){ # debugging loop
+        #   print('pause');
+        # }
+        # if((bytes>117)&&(bytes<130)){ # debugging loop
+        #   print('pause');
+        # }
+        if((track==8)&&(bytes>=(MTrk_length-6))){
+          Sys.sleep(0.1);
+        }
+      }
     }
+    
     if (MeventList[[i]][["type"]] != "2f") 
       stop("No end of track event after track length bytes");
     thisTrack = do.call("rbind", lapply(MeventList, function(x) as.data.frame(x, stringsAsFactors = FALSE)));
@@ -496,16 +535,19 @@ ReadMidi = function(fileIn){
     thisTrack$track = track;
     allTracks[[track]] = thisTrack;
   }
+  
+  close(con); # closing on exit not sufficient when reading many MIDIs
+  
   allTracks = do.call("rbind", allTracks);
   allTracks$event[allTracks$event == "Note On" & allTracks$parameter2 == 0] = "Note Off"
   allTracks$event = factor(allTracks$event, levels = c("Note Off", 
-                                                        "Note On", "Note Aftertouch", "Controller", "Program Change", 
-                                                        "Channel Aftertouch", "Pitch Bend", "Meta", "System", 
-                                                        "Sequence Number", "Text Event", "Copyright Notice", 
-                                                        "Sequence/Track Name", "Instrument Name", "Lyric", "Marker", 
-                                                        "Cue Point", "Program Name", "Device Name", "MIDI Channel Prefix", 
-                                                        "MIDI Port", "End of Track", "Set Tempo", "SMPTE Offset", 
-                                                        "Time Signature", "Key Signature", "Sequencer Specific"));
+                                                       "Note On", "Note Aftertouch", "Controller", "Program Change", 
+                                                       "Channel Aftertouch", "Pitch Bend", "Meta", "System", 
+                                                       "Sequence Number", "Text Event", "Copyright Notice", 
+                                                       "Sequence/Track Name", "Instrument Name", "Lyric", "Marker", 
+                                                       "Cue Point", "Program Name", "Device Name", "MIDI Channel Prefix", 
+                                                       "MIDI Port", "End of Track", "Set Tempo", "SMPTE Offset", 
+                                                       "Time Signature", "Key Signature", "Sequencer Specific"));
   #return(allTracks);
   x = allTracks;
   
@@ -519,7 +561,7 @@ ReadMidi = function(fileIn){
     tmpKey = tmpKey[[1]];
     if(tmpKey[2]=='major'){
       tmpMM = 0;
-      }
+    }
     else{
       tmpMM = 1;
     }
@@ -534,12 +576,15 @@ ReadMidi = function(fileIn){
   else{
     tmpKSig = c(0,0);
   }
+  tmpKSig[is.na(tmpKSig)] = 0;
   
   instList = list();
   for(i in 0:15){
-    instList[[i+1]] = x[(x$event=='Program Change')&(x$channel==i),"parameter1"];
+    thisInst = x[(x$event=='Program Change')&(x$channel==i),"parameter1"];
+    if(!length(thisInst)) thisInst = 0;
+    instList[[i+1]] = thisInst;
   }
-
+  
   tmpTempo = x[x$event=='Set Tempo',"parameterMetaSystem"];
   
   x = x[x$event %in% c("Note On", "Note Off"), c("time", "event", "channel", "parameter1", "parameter2", "track")];
@@ -612,7 +657,7 @@ ReadMidi = function(fileIn){
     #i = i[i$event == "Note On", ]
     #i$length = Time[, 2] - Time[, 1]
     #i
-    });
+  });
   x = do.call("rbind", x);
   x$parameter1 = as.integer(x$parameter1);
   x$notename = factor(tuneR:::notenames(x$parameter1 - 69), levels = tuneR:::notenames(-69:62));
@@ -623,7 +668,7 @@ ReadMidi = function(fileIn){
   # return(x);
   x = list('midi'=x,'meta'=list('tick'=MThd_division,'bpm'=60000000/as.numeric(tmpTempo),'tsig'=tmpTSig,'ppq'=tmpClocks,'epq'=tmp8pQ,'ksig'=tmpKSig,'instruments'=instList));
   return(ExtractTracks(x));
-
+  
 }
 
 ReadMTrkEvent = function(con, lastEventChannel = NA){
@@ -856,7 +901,7 @@ ReadMTrkEvent = function(con, lastEventChannel = NA){
       parameterMetaSystem = NA,
       # modified next line as source code caused issues with some MIDI files
       # ORIGINAL bytes = 2 + DTtemp[2] + (!(event %in% c("c", "d")) - backseeked),
-      bytes = 2 + DTtemp[2] + !(event %in% c("c", "d")) - backseeked,
+      bytes = 2 + DTtemp[2] - backseeked + !(event %in% c("c", "d")),
       EventChannel = EventChannel
     )
   )
@@ -876,7 +921,7 @@ NoteValBins = function(n=2,trip=T){
   # note value given as 1/2^n of bar, so n = 1 gives half notes, n = 2 gives quarter notes, n = 3 gives eighth...
   
   n = round(n);
-
+  
   strVal = 1/2^n;
   if(trip){
     tmpS = seq(0,1,strVal/3);
@@ -897,7 +942,7 @@ NearestNoteVal = function(x,n=3,doTrip=T){
   x = x - xTmp;
   
   x = sapply(x,function(i){tmp = abs(noteBin-i)==min(abs(noteBin-i))
-          if(sum(tmp)>1) return(noteBin[tmp][2]) else return(noteBin[tmp][1])})
+  if(sum(tmp)>1) return(noteBin[tmp][2]) else return(noteBin[tmp][1])})
   return(xTmp + x);
 }
 
@@ -1018,22 +1063,22 @@ RoundSongTimes = function(tracksIn,n=4,doLen=T,doTrip=T){
   data2 = tracksIn[length(tracksIn)];
   
   data1 = lapply(data1,function(x,m=n,o=tracksIn,p=doTrip){
-                      if(nrow(x)){
-                        x$time = TickToBar(x$time,o);
-                        x$time = NearestNoteVal(x$time,m,p);
-                        x$time = BarToTick(x$time,o);
-                      }
-                      return(x);});
+    if(nrow(x)){
+      x$time = TickToBar(x$time,o);
+      x$time = NearestNoteVal(x$time,m,p);
+      x$time = BarToTick(x$time,o);
+    }
+    return(x);});
   if(doLen){
     data1 = lapply(data1,function(x,m=n,o=tracksIn,p=doTrip){
-                      if(nrow(x)){
-                        tmpT = TickToBar(x$length,o);
-                        tmpT = NearestNoteVal(tmpT,m,p);
-                        tmpT[tmpT==0] = NoteValBins(m,p)[2];
-                        x$length = BarToTick(tmpT,o);
-                      }
-                      return(x);
-                      });
+      if(nrow(x)){
+        tmpT = TickToBar(x$length,o);
+        tmpT = NearestNoteVal(tmpT,m,p);
+        tmpT[tmpT==0] = NoteValBins(m,p)[2];
+        x$length = BarToTick(tmpT,o);
+      }
+      return(x);
+    });
   }
   
   newMax = 0;
@@ -1086,7 +1131,7 @@ PitchShift = function(tracksIn,x=0,n=NULL,d=F){
 }
 
 TimeShift = function(tracksIn,x=0,n=NULL,d=T){
-  # function to shift track notes in time. Use in conjunction with BarToTick for easier use. Note d = FALSE will not move drum tracks, and that would be
+  # function to shift track notes in time. Use in conjunction with TickToBar() for easier use. Note d = FALSE will not move drum tracks, and that would be
   # big bad, so d=T is default here!
   
   n = TrackSelector(tracksIn,n,d);
@@ -1120,8 +1165,8 @@ SongToMatrix = function(tracksIn,n=4,doTrip=T,bulkOut=T,sustainMode=0){
   maxVel = max(sapply(data1,function(x){return(max(x$velocity))}));
   
   data1 = lapply(data1,function(x,t=nB,d=dSmp,tra=data2){
-                  tmp = TrackToMatrix(x,t,d,tra,sustainMode,maxVel);
-                  });
+    tmp = TrackToMatrix(x,t,d,tra,sustainMode,maxVel);
+  });
   if(bulkOut){
     data4 = matrix(0,nrow = nrow(data1[[1]]),ncol = ncol(data1[[1]]));
     if(sustainMode!=1){
@@ -1133,9 +1178,9 @@ SongToMatrix = function(tracksIn,n=4,doTrip=T,bulkOut=T,sustainMode=0){
     }
     else{
       data3 = lapply(data1,function(x){
-                    x = abs(x);
-                    return(x);
-                    });
+        x = abs(x);
+        return(x);
+      });
       
       for(i in 1:nrow(data4)){
         for(j in 1:ncol(data4)){
@@ -1185,11 +1230,11 @@ ModuloSongNotes = function(tracksIn,off=60,reArr=0,n=NULL,d=F){
   data1 = tracksIn[n];
   
   data1 = lapply(data1,function(x,o=off,reA=reArr){
-            tmpNotes = x$note%%12;
-            tmpNotes[tmpNotes<reA] = tmpNotes[tmpNotes<reA] + 12;
-            x$note = tmpNotes + o;
-            return(x);
-            });
+    tmpNotes = x$note%%12;
+    tmpNotes[tmpNotes<reA] = tmpNotes[tmpNotes<reA] + 12;
+    x$note = tmpNotes + o;
+    return(x);
+  });
   
   tracksIn[n] = data1;
   return(tracksIn);
@@ -1235,14 +1280,14 @@ AddMeta = function(tracksIn=NULL,maxT=0,minP=0,maxP=127,tick=384,tsig=c(4,4,24,8
   if(is.null(tracksIn)) tracksIn = list();
   
   tracksIn$META = list('maxT'=maxT,'minP'=minP,'maxP'=maxP,
-                     'tick'=tick,
-                     'tsig'=tsig,
-                     'ksig'=ksig,
-                     'bpm'=bpm,
-                     'inst'=tmpInst,
-                     'resolution'=NA,
-                     'matmode'=NA,
-                     'sustainmode'=NA);
+                       'tick'=tick,
+                       'tsig'=tsig,
+                       'ksig'=ksig,
+                       'bpm'=bpm,
+                       'inst'=tmpInst,
+                       'resolution'=NA,
+                       'matmode'=NA,
+                       'sustainmode'=NA);
   
   return(tracksIn);
 }
@@ -1278,10 +1323,9 @@ AddNotes = function(chanIn=0,notesIn=NULL,timesIn=NULL,lengthsIn=NULL,velIn=NULL
   return(c(data1,dataMeta));
 }
 
-LengthDistribution = function(tracksIn,normMode=0){
-  # normMode == 0      raw counts
-  # normMode == 1      normalise to max within track
-  # normMode == 2      normalise to max across all tracks
+LengthDistribution = function(tracksIn){
+  # function to find probability distrubutions for note lengths and note timings in each bar, for each MIDI track. Total note counts for each track given in $N
+  
   lBinning = NoteValBins(4,F)[2];
   tmpLen = length(tracksIn)-1;
   
@@ -1289,8 +1333,8 @@ LengthDistribution = function(tracksIn,normMode=0){
   outPutT = matrix(0,ncol = tmpLen,nrow = 16,dimnames = list(seq(0,15/16,1/16),names(tracksIn[-length(tracksIn)])));
   
   for(i in 1:tmpLen){
-    outPutL[,i] = hist(TickToBar(tmp[[i]]$length,tmp),breaks = c(seq(-lBinning,1,lBinning)+lBinning/2,500),plot = F)$counts;
-    tDist = hist(TickToBar(tmp[[i]]$time,tmp)%%1,breaks = c(seq(0,1+lBinning,lBinning)-lBinning/2),plot = F)$counts;
+    outPutL[,i] = hist(TickToBar(tracksIn[[i]]$length,tracksIn),breaks = c(seq(-lBinning,1,lBinning)+lBinning/2,500),plot = F)$counts;
+    tDist = hist(TickToBar(tracksIn[[i]]$time,tracksIn)%%1,breaks = c(seq(0,1+lBinning,lBinning)-lBinning/2),plot = F)$counts;
     tDist[1] = tDist[1] + tDist[17];
     outPutT[,i] = tDist[1:16];
   }
@@ -1298,6 +1342,7 @@ LengthDistribution = function(tracksIn,normMode=0){
   theSums = colSums(outPutT);
   outPutL = outPutL/theSums[col(outPutL)];
   outPutT = outPutT/theSums[col(outPutT)];
+  
   return(list('lengths'=outPutL,'times'=outPutT,'N'=theSums));
 }
 
@@ -1408,150 +1453,150 @@ UpdateMinMaxMeta = function(){
 InstrumentList = function(n,outCol = 1:4){
   theList = data.frame('Patch ID'=0:127,
                        'Patch'=c('Acoustic Grand Piano'
-                                    ,'Bright Acoustic Piano'
-                                    ,'Electric Grand Piano'
-                                    ,'Honky-tonk Piano'
-                                    ,'Electric Piano 1'
-                                    ,'Electric Piano 2'
-                                    ,'Harpsichord'
-                                    ,'Clavi'
-                                    ,'Celesta'
-                                    ,'Glockenspiel'
-                                    ,'Music Box'
-                                    ,'Vibraphone'
-                                    ,'Marimba'
-                                    ,'Xylophone'
-                                    ,'Tubular Bells'
-                                    ,'Dulcimer'
-                                    ,'Drawbar Organ'
-                                    ,'Percussive Organ'
-                                    ,'Rock Organ'
-                                    ,'Church Organ'
-                                    ,'Reed Organ'
-                                    ,'Accordion'
-                                    ,'Harmonica'
-                                    ,'Tango Accordion'
-                                    ,'Acoustic Guitar (nylon)'
-                                    ,'Acoustic Guitar (steel)'
-                                    ,'Electric Guitar (jazz)'
-                                    ,'Electric Guitar (clean)'
-                                    ,'Electric Guitar (muted)'
-                                    ,'Overdriven Guitar'
-                                    ,'Distortion Guitar'
-                                    ,'Guitar harmonics'
-                                    ,'Acoustic Bass'
-                                    ,'Electric Bass (finger)'
-                                    ,'Electric Bass (pick)'
-                                    ,'Fretless Bass'
-                                    ,'Slap Bass 1'
-                                    ,'Slap Bass 2'
-                                    ,'Synth Bass 1'
-                                    ,'Synth Bass 2'
-                                    ,'Violin'
-                                    ,'Viola'
-                                    ,'Cello'
-                                    ,'Contrabass'
-                                    ,'Tremolo Strings'
-                                    ,'Pizzicato Strings'
-                                    ,'Orchestral Harp'
-                                    ,'Timpani'
-                                    ,'String Ensemble 1'
-                                    ,'String Ensemble 2'
-                                    ,'SynthStrings 1'
-                                    ,'SynthStrings 2'
-                                    ,'Choir Aahs'
-                                    ,'Voice Oohs'
-                                    ,'Synth Voice'
-                                    ,'Orchestra Hit'
-                                    ,'Trumpet'
-                                    ,'Trombone'
-                                    ,'Tuba'
-                                    ,'Muted Trumpet'
-                                    ,'French Horn'
-                                    ,'Brass Section'
-                                    ,'SynthBrass 1'
-                                    ,'SynthBrass 2'
-                                    ,'Soprano Sax'
-                                    ,'Alto Sax'
-                                    ,'Tenor Sax'
-                                    ,'Baritone Sax'
-                                    ,'Oboe'
-                                    ,'English Horn'
-                                    ,'Bassoon'
-                                    ,'Clarinet'
-                                    ,'Piccolo'
-                                    ,'Flute'
-                                    ,'Recorder'
-                                    ,'Pan Flute'
-                                    ,'Blown Bottle'
-                                    ,'Shakuhachi'
-                                    ,'Whistle'
-                                    ,'Ocarina'
-                                    ,'Lead 1 (square)'
-                                    ,'Lead 2 (sawtooth)'
-                                    ,'Lead 3 (calliope)'
-                                    ,'Lead 4 (chiff)'
-                                    ,'Lead 5 (charang)'
-                                    ,'Lead 6 (voice)'
-                                    ,'Lead 7 (fifths)'
-                                    ,'Lead 8 (bass + lead)'
-                                    ,'Pad 1 (new age)'
-                                    ,'Pad 2 (warm)'
-                                    ,'Pad 3 (polysynth)'
-                                    ,'Pad 4 (choir)'
-                                    ,'Pad 5 (bowed)'
-                                    ,'Pad 6 (metallic)'
-                                    ,'Pad 7 (halo)'
-                                    ,'Pad 8 (sweep)'
-                                    ,'FX 1 (rain)'
-                                    ,'FX 2 (soundtrack)'
-                                    ,'FX 3 (crystal)'
-                                    ,'FX 4 (atmosphere)'
-                                    ,'FX 5 (brightness)'
-                                    ,'FX 6 (goblins)'
-                                    ,'FX 7 (echoes)'
-                                    ,'FX 8 (sci-fi)'
-                                    ,'Sitar'
-                                    ,'Banjo'
-                                    ,'Shamisen'
-                                    ,'Koto'
-                                    ,'Kalimba'
-                                    ,'Bag pipe'
-                                    ,'Fiddle'
-                                    ,'Shanai'
-                                    ,'Tinkle Bell'
-                                    ,'Agogo'
-                                    ,'Steel Drums'
-                                    ,'Woodblock'
-                                    ,'Taiko Drum'
-                                    ,'Melodic Tom'
-                                    ,'Synth Drum'
-                                    ,'Reverse Cymbal'
-                                    ,'Guitar Fret Noise'
-                                    ,'Breath Noise'
-                                    ,'Seashore'
-                                    ,'Bird Tweet'
-                                    ,'Telephone Ring'
-                                    ,'Helicopter'
-                                    ,'Applause'
-                                    ,'Gunshot'),
+                                 ,'Bright Acoustic Piano'
+                                 ,'Electric Grand Piano'
+                                 ,'Honky-tonk Piano'
+                                 ,'Electric Piano 1'
+                                 ,'Electric Piano 2'
+                                 ,'Harpsichord'
+                                 ,'Clavi'
+                                 ,'Celesta'
+                                 ,'Glockenspiel'
+                                 ,'Music Box'
+                                 ,'Vibraphone'
+                                 ,'Marimba'
+                                 ,'Xylophone'
+                                 ,'Tubular Bells'
+                                 ,'Dulcimer'
+                                 ,'Drawbar Organ'
+                                 ,'Percussive Organ'
+                                 ,'Rock Organ'
+                                 ,'Church Organ'
+                                 ,'Reed Organ'
+                                 ,'Accordion'
+                                 ,'Harmonica'
+                                 ,'Tango Accordion'
+                                 ,'Acoustic Guitar (nylon)'
+                                 ,'Acoustic Guitar (steel)'
+                                 ,'Electric Guitar (jazz)'
+                                 ,'Electric Guitar (clean)'
+                                 ,'Electric Guitar (muted)'
+                                 ,'Overdriven Guitar'
+                                 ,'Distortion Guitar'
+                                 ,'Guitar harmonics'
+                                 ,'Acoustic Bass'
+                                 ,'Electric Bass (finger)'
+                                 ,'Electric Bass (pick)'
+                                 ,'Fretless Bass'
+                                 ,'Slap Bass 1'
+                                 ,'Slap Bass 2'
+                                 ,'Synth Bass 1'
+                                 ,'Synth Bass 2'
+                                 ,'Violin'
+                                 ,'Viola'
+                                 ,'Cello'
+                                 ,'Contrabass'
+                                 ,'Tremolo Strings'
+                                 ,'Pizzicato Strings'
+                                 ,'Orchestral Harp'
+                                 ,'Timpani'
+                                 ,'String Ensemble 1'
+                                 ,'String Ensemble 2'
+                                 ,'SynthStrings 1'
+                                 ,'SynthStrings 2'
+                                 ,'Choir Aahs'
+                                 ,'Voice Oohs'
+                                 ,'Synth Voice'
+                                 ,'Orchestra Hit'
+                                 ,'Trumpet'
+                                 ,'Trombone'
+                                 ,'Tuba'
+                                 ,'Muted Trumpet'
+                                 ,'French Horn'
+                                 ,'Brass Section'
+                                 ,'SynthBrass 1'
+                                 ,'SynthBrass 2'
+                                 ,'Soprano Sax'
+                                 ,'Alto Sax'
+                                 ,'Tenor Sax'
+                                 ,'Baritone Sax'
+                                 ,'Oboe'
+                                 ,'English Horn'
+                                 ,'Bassoon'
+                                 ,'Clarinet'
+                                 ,'Piccolo'
+                                 ,'Flute'
+                                 ,'Recorder'
+                                 ,'Pan Flute'
+                                 ,'Blown Bottle'
+                                 ,'Shakuhachi'
+                                 ,'Whistle'
+                                 ,'Ocarina'
+                                 ,'Lead 1 (square)'
+                                 ,'Lead 2 (sawtooth)'
+                                 ,'Lead 3 (calliope)'
+                                 ,'Lead 4 (chiff)'
+                                 ,'Lead 5 (charang)'
+                                 ,'Lead 6 (voice)'
+                                 ,'Lead 7 (fifths)'
+                                 ,'Lead 8 (bass + lead)'
+                                 ,'Pad 1 (new age)'
+                                 ,'Pad 2 (warm)'
+                                 ,'Pad 3 (polysynth)'
+                                 ,'Pad 4 (choir)'
+                                 ,'Pad 5 (bowed)'
+                                 ,'Pad 6 (metallic)'
+                                 ,'Pad 7 (halo)'
+                                 ,'Pad 8 (sweep)'
+                                 ,'FX 1 (rain)'
+                                 ,'FX 2 (soundtrack)'
+                                 ,'FX 3 (crystal)'
+                                 ,'FX 4 (atmosphere)'
+                                 ,'FX 5 (brightness)'
+                                 ,'FX 6 (goblins)'
+                                 ,'FX 7 (echoes)'
+                                 ,'FX 8 (sci-fi)'
+                                 ,'Sitar'
+                                 ,'Banjo'
+                                 ,'Shamisen'
+                                 ,'Koto'
+                                 ,'Kalimba'
+                                 ,'Bag pipe'
+                                 ,'Fiddle'
+                                 ,'Shanai'
+                                 ,'Tinkle Bell'
+                                 ,'Agogo'
+                                 ,'Steel Drums'
+                                 ,'Woodblock'
+                                 ,'Taiko Drum'
+                                 ,'Melodic Tom'
+                                 ,'Synth Drum'
+                                 ,'Reverse Cymbal'
+                                 ,'Guitar Fret Noise'
+                                 ,'Breath Noise'
+                                 ,'Seashore'
+                                 ,'Bird Tweet'
+                                 ,'Telephone Ring'
+                                 ,'Helicopter'
+                                 ,'Applause'
+                                 ,'Gunshot'),
                        'Group ID'=0:127 %/% 8,
                        'Group'= rep(c('Piano'
-                                    ,'Chromatic Percussion'
-                                    ,'Organ'
-                                    ,'Guitar'
-                                    ,'Bass'
-                                    ,'Strings'
-                                    ,'Ensemble'
-                                    ,'Brass'
-                                    ,'Reed'
-                                    ,'Pipe'
-                                    ,'Synth Lead'
-                                    ,'Synth Pad'
-                                    ,'Synth Effects'
-                                    ,'Ethnic'
-                                    ,'Percussive'
-                                    ,'Sound Effects'),each=8),
+                                      ,'Chromatic Percussion'
+                                      ,'Organ'
+                                      ,'Guitar'
+                                      ,'Bass'
+                                      ,'Strings'
+                                      ,'Ensemble'
+                                      ,'Brass'
+                                      ,'Reed'
+                                      ,'Pipe'
+                                      ,'Synth Lead'
+                                      ,'Synth Pad'
+                                      ,'Synth Effects'
+                                      ,'Ethnic'
+                                      ,'Percussive'
+                                      ,'Sound Effects'),each=8),
                        stringsAsFactors = F
   );
   
@@ -1654,7 +1699,7 @@ ChordDataGen = function(chord,rootLabel,otherLab=data.frame(NULL)){
   tmpLab = (rootLabel - chord[1])%%12;
   tmpCh = chord %% 12;
   tmpCh = tmpCh - tmpCh[1];
-
+  
   # loop up to first valid permutation
   for(i in 2:n){
     while(tmpCh[i]<tmpCh[i-1]){
@@ -1715,6 +1760,263 @@ ChordDataGen = function(chord,rootLabel,otherLab=data.frame(NULL)){
   if(nrow(otherLab)){
     cbind(out,otherLab);
   }
+  
+  return(out);
+}
 
+DataLabelAssist = function(path,playMIDI = T,toRun=NULL){
+  # helper function to streamline MIDI dataset labelling. For use in interactive mode
+  
+  fileList = list.files(path);
+  fileList = fileList[grepl('.mid',fileList,fixed = T)];
+  sizeList = floor(10*file.size(paste0(path,'/',fileList))/2^10)/10;
+  
+  out = list();
+  
+  k = 1;
+  for(i in 1:length(fileList)){
+    stringOut = paste(strrep('=',times = getOption('width')),'\nFile number:',i,'/',length(fileList),'\nFile name:',fileList[i],'\nFile size:',sizeList[i],'KB','\nProceed? (Y/N)\n');
+    cat(stringOut);
+    userIn = readline('> ');
+    if(userIn == '') userIn = '0';
+    
+    if(toupper(unlist(strsplit(userIn, ''))[1]) == 'Y'){
+      cat('Reading file, this may take a while, please wait...\n');
+      tmpMIDI = ReadMidi(paste0(path,'/',fileList[i]));
+      noteDis = NoteDistribution(tmpMIDI,modulo = F);
+      lenDis = LengthDistribution(tmpMIDI);
+      meanPol = MeanPolyphony(tmpMIDI);
+      perBar = NotesPerBar(tmpMIDI);
+      
+      # do stuff here. make eval on second input for general use?
+      #############
+      nTrack = length(tmpMIDI)-1;
+      for(j in 1:nTrack){
+        cat(paste('File',i,'\t track',j,'/',nTrack,'\n'));
+        thisInst = InstrumentList(tmpMIDI$META$inst[names(tmpMIDI$META$inst)==names(tmpMIDI[j])][[1]])[1,];
+        
+        PlotTracks(tmpMIDI,j);
+        if(playMIDI){
+          toListen = tmpMIDI[c(j,nTrack+1)];
+          toListen = TimeShift(toListen,-toListen[[1]]$time[1]);
+          midiFlag = T;
+          fileStr = 'tmpDataLabelAssist';
+          fileName = 'tmpDataLabelAssist';
+          l = 0;
+          while(midiFlag){
+            if(l!=0){
+              fileName = paste0(fileStr,l);
+            }
+            l = l + 1;
+            tryCatch({ExportMIDI(toListen,fileName);midiFlag=F;},error = function(cond){return(NULL)},warning = function(cond){return(NULL)});
+            if(l>=10){
+              cat('Could not write MIDI file. Investigate pls, probably threw a warning or smth.\n');
+              midiFlag=F; # failsafe
+            }
+          }
+          # add some user options here to allow customisation of save directory etc?
+          shell(paste(shQuote("c:/Program Files/Windows Media Player/wmplayer.exe"),paste0("E:/2017/Documents/R/",fileName,".mid"),sep=' '),wait=F);
+        }
+        
+        userIn = '0';
+        # allow 'a' as an input as well as 'm' so we have nice a,b,c,d options
+        while(!(userIn %in% c('M','A','B','C','D','S'))){
+          cat('Is this track predominantly melody (M), bass (B), chords (C), or drums (D)? Skip this track with (S)\n')   # maybe add extra options that are on
+          # boundary of existing categories eg 
+          # sfx and arpeggiated chords?
+          userIn = readline('> ');
+          if(userIn == '') userIn = '0';
+          userIn = toupper(unlist(strsplit(userIn, ''))[1]);
+        }
+        if(userIn=='A') userIn = 'M';
+        
+        if(userIn!='S'){
+          theTrkNum = as.numeric(names(tmpMIDI[j]));
+          if(theTrkNum!=9){
+            theTrkNum = sample((0:15)[-9],1);   # only the drum tracks are related to track number, so randomise all other tracks so higher, less
+            # frequently used track numbers are not underrepresented in data
+          }
+          out$TMP = list('LABEL'=userIn,
+                         'i'=thisInst$Group.ID,
+                         'nc'=noteDis$count[,j],
+                         'nl'=noteDis$length[,j],
+                         'll'=lenDis$lengths[,j],
+                         'lt'=lenDis$times[,j],
+                         'p'=meanPol[j],
+                         'b'=perBar[j],
+                         't'=theTrkNum,
+                         'song'=fileList[i],
+                         'track'=j);
+          names(out)[names(out)=='TMP'] = k;
+          k = k + 1;
+        }
+      }
+      #############
+    }
+  }
+  
+  return(out)
+}
+
+TransTrackData = function(x,trainSplit = 0.8,useLen = T,toPred = F){
+  # transform data from DataLabelAssist into format more agreeable with keras. useLen uses total duration rather than total occurrences for note distribution
+  
+  require('keras');
+  
+  transDat = t(sapply(x,function(j){
+    tmpV = vector('numeric',length = 16);
+    tmpT = tmpV;
+    tmpV[j$i+1] = 1;
+    tmpT[as.numeric(j$t)+1] = 1;
+    c(tmpV,unname(unlist(j[c(3+useLen,5,6,7,8)])),tmpT);
+  }));
+  colnames(transDat) = c(toupper(strtrim(InstrumentList((0:15)*8,4),7)),
+                         paste0('NoteDis',as.character(1:132)),
+                         paste0('LgthDis',as.character(1:18)),
+                         paste0('TimeDis',as.character(1:16)),
+                         'Plyphny',
+                         'NoteFrq',
+                         paste0('MIDITrk',as.character(0:15)));
+  
+  nSamp = length(x);
+  if(trainSplit==1){
+    toTrain = 1:nSamp;
+  }
+  else{
+    nTrain = ceiling(nSamp*max(min(trainSplit,1),0));
+    toTrain = sample(1:nSamp,size = nTrain,replace = F);  # change this to less naive method? ie keep proportions of each category the same in train/test
+    # to reduce sample bias
+  }
+  toTest = (1:nSamp)[-toTrain];
+  
+  if(!toPred){
+    theFac = factor(sapply(x,function(j){j$`LABEL`}));
+    labelList = keras::to_categorical(as.numeric(theFac)-1);
+    colnames(labelList) = levels(theFac);
+    
+    newData = list('train'=list('x'=transDat[toTrain,],
+                                'y'=labelList[toTrain,]),
+                   'test'=list( 'x'=transDat[toTest,],
+                                'y'=labelList[toTest,]));
+    
+    rownames(newData[[1]][[1]]) = 1:nrow(newData[[1]][[1]]);
+    rownames(newData[[1]][[2]]) = 1:nrow(newData[[1]][[2]]);
+    rownames(newData[[2]][[1]]) = 1:nrow(newData[[2]][[1]]);
+    rownames(newData[[2]][[2]]) = 1:nrow(newData[[2]][[2]]);
+  }
+  else{
+    newData = list('train'=list('x'=transDat[toTrain,]));
+  }
+  
+  
+  
+  return(newData);
+}
+
+TrainTrackLabeller = function(x,trainSplit = 0.8,epochs = 500,useLen = F){
+  # function to train a dense network to identify melody, chord, drum, and bass tracks in a MIDI file
+  
+  # TODO problems misclassifying drums as bass, maybe due to underrepresentation in data?
+  # too many inputs for note distribution, swamping other input nodes eg track number and making network always misclassify drums as bass?
+  # maybe add additional metrics eg distribution of intervals between successive notes; number of peaks and kurtosis in note distribution; blah
+  # maybe add additional categories for eg arpeggiated chords
+  # parameterise network so user can define network shape, independent of input size?
+  # modify the mean polyphony function to give an extra output that bins notes into pitch class prior to calc -> disregards unison notes that may be present
+  # in melody -> more meaningful for classification?
+  
+  require(keras);
+  
+  theData = TransTrackData(x,trainSplit,useLen);
+  
+  dTrX = theData$train$x;
+  dTrY = theData$train$y;
+  dTeX = theData$test$x;
+  dTeY = theData$test$y;
+  
+  rowTr = nrow(dTrX);
+  rowTe = nrow(dTeX);
+  colX = ncol(dTrX);
+  colY = ncol(dTrY);
+  
+  dim(dTrX) = c(rowTr,1,colX);
+  dim(dTrY) = c(rowTr,1,colY);
+  dim(dTeX) = c(rowTe, 1, colX);
+  dim(dTeY) = c(rowTe, 1, colY);
+  
+  m = keras_model_sequential();
+  m %>% layer_dense(colX,activation = 'relu',input_shape = c(1,colX));
+  m %>% layer_dropout(0.55);
+  m %>% layer_dense(160,activation = 'relu');
+  m %>% layer_dropout(0.54);
+  m %>% layer_dense(140,activation = 'relu');
+  m %>% layer_dropout(0.52);
+  m %>% layer_dense(120,activation = 'relu');
+  m %>% layer_dropout(0.49);
+  m %>% layer_dense(100,activation = 'relu');
+  m %>% layer_dropout(0.45)
+  m %>% layer_dense(75,activation = 'relu');
+  m %>% layer_dropout(0.4)
+  m %>% layer_dense(50,activation = 'relu');
+  m %>% layer_dropout(0.35)
+  m %>% layer_dense(30,activation = 'relu');
+  m %>% layer_dropout(0.3)
+  m %>% layer_dense(20,activation = 'relu');
+  m %>% layer_dropout(0.22);
+  m %>% layer_dense(12,activation = 'relu');
+  m %>% layer_dropout(0.15);
+  m %>% layer_dense(8,activation = 'relu');
+  m %>% layer_dropout(0.1);
+  m %>% layer_dense(colY,activation = 'relu');
+  m %>% layer_dense(colY,activation = 'softmax');
+  m %>% compile('adam','categorical_crossentropy',metrics = 'accuracy');
+  m %>% fit(x = dTrX,y = dTrY,verbose = 1,epochs = epochs);
+  
+  result = evaluate(m,x = dTeX,y=dTeY,verbose = 1);
+  
+  return(list('model'=m,'accuracy'=result,'labels'=colnames(theData$train$y),'data'=list( 'xtr'=dTrX,
+                                                                                          'ytr'=dTrY,
+                                                                                          'xte'=dTeX,
+                                                                                          'yte'=dTeY)));
+}
+
+LabelTracks = function(tracksIn,mdl,useLen=F){
+  # labels a set of MIDI tracks. note that mdl is the output from TrainTrackLabeller, and not just the trained model! also make sure useLen matches what
+  # the model was trained with
+  
+  noteDis = NoteDistribution(tracksIn,modulo = F);    # maybe make these functions more efficient...
+  lenDis = LengthDistribution(tracksIn);
+  meanPol = MeanPolyphony(tracksIn);
+  perBar = NotesPerBar(tracksIn);
+  
+  nTrack = length(tracksIn)-1;
+  out = list();
+  
+  for(j in 1:nTrack){
+    thisInst = InstrumentList(tracksIn$META$inst[names(tracksIn$META$inst)==names(tracksIn[j])][[1]])[1,];
+    out$TMP = list('LABEL'=NA,
+                   'i'=thisInst$Group.ID,
+                   'nc'=noteDis$count[,j],
+                   'nl'=noteDis$length[,j],
+                   'll'=lenDis$lengths[,j],
+                   'lt'=lenDis$times[,j],
+                   'p'=meanPol[j],
+                   'b'=perBar[j],
+                   't'=names(tracksIn[j]),
+                   'song'=NA,
+                   'track'=j);
+    names(out)[names(out)=='TMP'] = j;
+  }
+  out = TransTrackData(out,1,useLen,T);
+  outNames = mdl$labels;
+  
+  dTrX = out$train$x;
+  rowTr = nrow(dTrX);
+  colX = ncol(dTrX);
+  dim(dTrX) = c(rowTr,1,colX);
+  
+  out = mdl$model$predict(dTrX);
+  dim(out) = dim(out)[-2];
+  out = outNames[apply(out,1,function(j){which.max(j)})];
+  
   return(out);
 }
